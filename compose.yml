@@ -1,0 +1,53 @@
+# Development compose file.
+# Usage:
+#   docker compose up        # both services with hot reload
+#   docker compose down      # stop
+#   docker compose run --rm backend uv run pytest
+#   docker compose run --rm backend uv run python manage.py seed_arena
+#   docker compose run --rm backend uv run python manage.py createsuperuser
+#
+# The backend lives on port 8000 (Django dev server) and the frontend on
+# 5173 (Vite). The Vite dev server proxies /api, /admin, /accounts, /static
+# to the backend container so the browser only sees one origin (localhost:5173).
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-dev
+    volumes:
+      # The :z suffix tells Docker to relabel the host dir for SELinux
+      # (needed on Fedora/RHEL). On other distros it's a harmless no-op.
+      - ./backend:/app:z
+    environment:
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: dev-insecure-change-me-please
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_DB_PATH: /app/db.sqlite3
+      # OAuth credentials are optional in dev — if blank, the corresponding
+      # social button is hidden on the login page. Set these in a local .env
+      # file (read automatically by `docker compose`) to test OAuth locally.
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
+      DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-dev
+    volumes:
+      - ./frontend:/app:z
+      - frontend_node_modules:/app/node_modules
+    environment:
+      DEV_BACKEND: http://backend:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  frontend_node_modules:

@@ -1,0 +1,520 @@
+/*
+ * "Tavern oracle" theme — aged parchment, sepia ink, brass + oxblood accents.
+ * Fonts come from index.html: Cinzel (display) and IM Fell English (body).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Parchment base — warm cream that very subtly mottles via gradients. */
+  --parchment: #f1e3c4;
+  --parchment-light: #faf0d5;
+  --parchment-dark: #d9c79e;
+
+  /* Ink + leather palette. */
+  --ink: #2b1a0c;
+  --ink-soft: #5b4226;
+  --ink-mute: #876a47;
+
+  /* Wood / iron borders. */
+  --border: #6e4c25;
+  --border-soft: #b89263;
+
+  /* Accents: brass for selection, oxblood for danger, forest for success. */
+  --brass: #b8862c;
+  --brass-deep: #8c5e1a;
+  --oxblood: #6b1818;
+  --moss: #4d6b2b;
+
+  --shadow-ink: rgba(43, 26, 12, 0.35);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: "IM Fell English", "EB Garamond", Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  /* Layered radial + linear gradients fake an old, slightly stained page. */
+  background-color: var(--parchment);
+  background-image:
+    radial-gradient(at 12% 18%, rgba(255, 240, 200, 0.55) 0%, transparent 38%),
+    radial-gradient(at 88% 6%, rgba(110, 76, 37, 0.10) 0%, transparent 45%),
+    radial-gradient(at 65% 92%, rgba(110, 76, 37, 0.10) 0%, transparent 50%),
+    radial-gradient(at 8% 92%, rgba(110, 76, 37, 0.06) 0%, transparent 45%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(110, 76, 37, 0.03) 0 2px,
+      transparent 2px 7px
+    );
+  background-attachment: fixed;
+}
+
+button { font: inherit; cursor: pointer; }
+
+/* ---------- App shell ---------- */
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header (banner) ---------- */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.65rem 1.25rem;
+  background:
+    linear-gradient(to bottom, #3b2613, #2a1809 70%, #1e1006);
+  color: #f4e1bb;
+  border-bottom: 3px double #c19658;
+  font-family: "Cinzel", "IM Fell English SC", serif;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 6px -2px var(--shadow-ink);
+  position: relative;
+}
+
+/* Decorative inset highlight at the top of the banner. */
+.header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: rgba(255, 235, 200, 0.25);
+  pointer-events: none;
+}
+
+.header .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin-right: 1.25rem;
+}
+.header .brand .sigil {
+  color: #e3b04d;
+  font-size: 1.4rem;
+  filter: drop-shadow(0 0 4px rgba(227, 176, 77, 0.45));
+}
+.header .brand-text {
+  font-family: "Cinzel", serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff0c0;
+  text-shadow: 0 1px 0 #000, 0 0 8px rgba(184, 134, 44, 0.3);
+}
+
+.header .meta {
+  display: flex;
+  gap: 1.6rem;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.header .meta > div {
+  font-size: 0.92rem;
+}
+
+.header .meta b {
+  color: #f7dfa8;
+  font-weight: 700;
+  font-family: "Cinzel", serif;
+}
+
+.header .muted { color: #d2b88a; font-style: italic; font-size: 0.85rem; }
+
+.header .right {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.header .right a {
+  color: #f0c878;
+  text-decoration: none;
+  border-bottom: 1px dotted #c19658;
+}
+.header .right a:hover { color: #fff0c0; }
+
+.header .right b { color: #fff0c0; }
+
+.header .pool-warning {
+  color: #ff7a6b !important;
+  text-shadow: 0 0 4px rgba(255, 100, 80, 0.4);
+}
+
+/* Buttons inside the header (logout, sign-in). */
+.header button {
+  background:
+    linear-gradient(to bottom, #c89640, #8b5a18);
+  color: #fff8d6;
+  border: 1px solid #4b2d0c;
+  padding: 0.32rem 0.85rem;
+  border-radius: 3px;
+  font-family: "Cinzel", serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 170, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 1px 1px rgba(0, 0, 0, 0.4);
+  transition: filter 0.08s;
+}
+.header button:hover { filter: brightness(1.08); }
+.header button:active { filter: brightness(0.92); }
+
+/* ---------- Workspace ---------- */
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  /* Center the stacked panels and cap their width so 21 matchup rows feel
+     scannable rather than sparse on ultrawide displays. */
+  max-width: 72rem;
+  width: 100%;
+  align-self: center;
+}
+
+/* ---------- Panel (parchment card) ---------- */
+
+.panel {
+  background:
+    linear-gradient(to bottom, var(--parchment-light), var(--parchment) 75%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Triple effect: inner highlight, faded second border, drop shadow. */
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 240, 200, 0.55),
+    inset 0 0 0 3px var(--border-soft),
+    0 6px 10px -4px var(--shadow-ink);
+  overflow: hidden;
+}
+
+.panel h2 {
+  margin: 0;
+  padding: 0.5rem 1rem 0.45rem;
+  font-family: "Cinzel", serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f3e0b6;
+  background:
+    linear-gradient(to bottom, #4a2f15, #311e0a);
+  border-bottom: 2px solid var(--brass-deep);
+  text-shadow: 0 1px 0 #000;
+}
+
+/* ---------- Tabs ---------- */
+
+.tabs {
+  display: flex;
+  background: rgba(110, 76, 37, 0.08);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.tabs button {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-soft);
+  border-bottom: 3px solid transparent;
+  padding: 0.55rem 1.1rem;
+  color: var(--ink-soft);
+  font-family: "Cinzel", serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tabs button:hover { color: var(--ink); background: rgba(184, 134, 44, 0.10); }
+
+.tabs button.active {
+  color: var(--brass-deep);
+  border-bottom-color: var(--brass);
+  background: rgba(184, 134, 44, 0.16);
+}
+
+/* ---------- Tables ---------- */
+
+.scroll { overflow: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+th, td {
+  padding: 0.5rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(110, 76, 37, 0.25);
+  vertical-align: middle;
+}
+
+th {
+  font-family: "Cinzel", serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f3e0b6;
+  background:
+    linear-gradient(to bottom, #4a2f15, #2c1a08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid var(--brass-deep);
+}
+
+th.num { text-align: right; }
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.08s, background-color 0.08s;
+}
+th.sortable:hover { color: #ffe7ab; }
+th.sorted { color: #ffd680; background: linear-gradient(to bottom, #5a3a1a, #341f0c); }
+
+th .th-label { display: inline-block; }
+th .th-indicator {
+  display: inline-block;
+  margin-left: 0.4rem;
+  opacity: 0.5;
+  font-size: 0.72rem;
+  color: #d8b067;
+}
+th.sorted .th-indicator { opacity: 1; }
+th.num .th-label { display: inline; }
+th.num .th-indicator { margin-left: 0.35rem; }
+
+td { font-size: 0.98rem; }
+td.num {
+  text-align: right;
+  font-family: "Cinzel", serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+tbody tr:nth-child(odd) {
+  background: rgba(110, 76, 37, 0.04);
+}
+tbody tr:hover { background: rgba(184, 134, 44, 0.10); }
+
+/* ---------- Tip toggle buttons (the bread + butter) ---------- */
+
+.toggle-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.4rem 0.75rem;
+  min-width: 9.5rem;
+  border-radius: 3px;
+  background:
+    linear-gradient(to bottom, #f7e9c4, #e3cf9c);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  font-family: "IM Fell English", serif;
+  font-size: 0.95rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 215, 0.7),
+    inset 0 -1px 0 rgba(110, 76, 37, 0.2),
+    0 1px 1px rgba(0, 0, 0, 0.12);
+  transition: filter 0.06s, transform 0.04s;
+}
+
+.toggle-btn:hover:not(:disabled) {
+  filter: brightness(1.04);
+  border-color: var(--brass-deep);
+}
+.toggle-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.toggle-btn .label {
+  font-weight: 700;
+  font-family: "IM Fell English SC", "IM Fell English", serif;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Submitter column ---------- */
+
+td.submitters {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+td.submitters > div { white-space: nowrap; }
+
+.badge {
+  display: inline-block;
+  min-width: 2.4rem;
+  padding: 0.04rem 0.4rem;
+  margin-right: 0.4rem;
+  background: rgba(110, 76, 37, 0.18);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  font-family: "Cinzel", serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  text-align: center;
+  vertical-align: middle;
+}
+.badge-plus {
+  background: rgba(77, 107, 43, 0.18);
+  border-color: var(--moss);
+  color: var(--moss);
+}
+.badge-minus {
+  background: rgba(107, 24, 24, 0.16);
+  border-color: var(--oxblood);
+  color: var(--oxblood);
+}
+
+/* Active: brass / illuminated manuscript gold leaf. */
+.toggle-btn.active {
+  background:
+    linear-gradient(to bottom, #e3b04d, #b07614);
+  color: #2a1808;
+  border-color: #4b2d0c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 190, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 0 6px rgba(184, 134, 44, 0.45),
+    0 1px 1px rgba(0, 0, 0, 0.18);
+}
+.toggle-btn.active .submitter { color: #4a2f15; }
+
+.toggle-btn:disabled {
+  filter: grayscale(0.45);
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.toggle-btn.active:disabled {
+  filter: grayscale(0.05);
+  opacity: 0.78;
+  border-style: solid;
+}
+
+/* Read-only (anonymous viewer): no dashes, faded but legible. */
+.toggle-btn.read-only:disabled {
+  filter: none;
+  opacity: 0.78;
+  border-style: solid;
+  cursor: not-allowed;
+}
+.toggle-btn.read-only.active:disabled {
+  opacity: 0.85;
+}
+
+/* ---------- Banners ---------- */
+
+.error-banner {
+  background:
+    linear-gradient(to bottom, #6b1818, #4a0e0e);
+  color: #fde2c8;
+  padding: 0.55rem 1rem;
+  font-family: "IM Fell English SC", serif;
+  letter-spacing: 0.03em;
+  border-bottom: 2px solid #2c0606;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-family: "Cinzel", serif;
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Login fallback view ---------- */
+
+.login {
+  max-width: 24rem;
+  margin: 4rem auto;
+  background:
+    linear-gradient(to bottom, var(--parchment-light), var(--parchment) 75%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1.5rem 1.75rem;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 240, 200, 0.55),
+    inset 0 0 0 3px var(--border-soft),
+    0 8px 14px -4px var(--shadow-ink);
+}
+
+.login h1 {
+  margin: 0 0 0.75rem 0;
+  font-family: "Cinzel", serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.login p { color: var(--ink-soft); font-style: italic; }
+
+.login form { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.login input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 230, 0.7);
+  color: var(--ink);
+  border-radius: 3px;
+  font: inherit;
+}
+.login input:focus {
+  outline: 2px solid var(--brass);
+  outline-offset: -1px;
+}
+
+.login button {
+  padding: 0.55rem;
+  background:
+    linear-gradient(to bottom, #c89640, #8b5a18);
+  color: #fff8d6;
+  border: 1px solid #4b2d0c;
+  border-radius: 3px;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 170, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 1px 1px rgba(0, 0, 0, 0.25);
+}
+.login button:hover { filter: brightness(1.06); }
+
+.login .error {
+  background: linear-gradient(to bottom, #6b1818, #4a0e0e);
+  color: #fde2c8;
+  padding: 0.45rem 0.7rem;
+  border-radius: 3px;
+  font-size: 0.9rem;
+}

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Hot Tips{% endblock %}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --parchment: #f1e3c4;
+      --parchment-light: #faf0d5;
+      --ink: #2b1a0c;
+      --ink-soft: #5b4226;
+      --border: #6e4c25;
+      --border-soft: #b89263;
+      --brass: #b8862c;
+      --brass-deep: #8c5e1a;
+      --oxblood: #6b1818;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "IM Fell English", "EB Garamond", Georgia, serif;
+      color: var(--ink);
+      background-color: var(--parchment);
+      background-image:
+        radial-gradient(at 12% 18%, rgba(255, 240, 200, 0.55) 0%, transparent 38%),
+        radial-gradient(at 88% 6%, rgba(110, 76, 37, 0.10) 0%, transparent 45%),
+        radial-gradient(at 65% 92%, rgba(110, 76, 37, 0.10) 0%, transparent 50%),
+        radial-gradient(at 8% 92%, rgba(110, 76, 37, 0.06) 0%, transparent 45%),
+        repeating-linear-gradient(135deg, rgba(110, 76, 37, 0.03) 0 2px, transparent 2px 7px);
+      background-attachment: fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 26rem;
+      background: linear-gradient(to bottom, var(--parchment-light), var(--parchment) 75%);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.75rem 2rem;
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 240, 200, 0.55),
+        inset 0 0 0 3px var(--border-soft),
+        0 10px 16px -4px rgba(43, 26, 12, 0.35);
+    }
+    h1 {
+      margin: 0 0 1rem 0;
+      font-family: "Cinzel", serif;
+      font-size: 1.45rem;
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    h1::after {
+      content: "✦";
+      display: block;
+      margin-top: 0.35rem;
+      color: var(--brass);
+      font-size: 0.8rem;
+    }
+    form { display: flex; flex-direction: column; gap: 0.75rem; }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-family: "Cinzel", serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    input {
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      background: rgba(255, 250, 230, 0.75);
+      color: var(--ink);
+      border-radius: 3px;
+      font-family: "IM Fell English", serif;
+      font-size: 1rem;
+    }
+    input:focus { outline: 2px solid var(--brass); outline-offset: -1px; }
+    button {
+      padding: 0.6rem;
+      margin-top: 0.5rem;
+      background: linear-gradient(to bottom, #c89640, #8b5a18);
+      color: #fff8d6;
+      border: 1px solid #4b2d0c;
+      border-radius: 3px;
+      font-family: "Cinzel", serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 230, 170, 0.55),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+        0 1px 1px rgba(0, 0, 0, 0.25);
+    }
+    button:hover { filter: brightness(1.06); }
+    .error {
+      background: linear-gradient(to bottom, #6b1818, #4a0e0e);
+      color: #fde2c8;
+      padding: 0.45rem 0.7rem;
+      border-radius: 3px;
+      font-size: 0.9rem;
+    }
+    .help { color: var(--ink-soft); font-style: italic; font-size: 0.9rem; }
+    a { color: var(--brass-deep); }
+    a:hover { color: var(--oxblood); }
+    p { line-height: 1.5; }
+
+    .social-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin: 0 0 1rem 0;
+    }
+    .social-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.65rem 0.8rem;
+      border-radius: 3px;
+      border: 1px solid #4b2d0c;
+      font-family: "Cinzel", serif;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #fff8d6;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 230, 170, 0.45),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+        0 1px 1px rgba(0, 0, 0, 0.25);
+    }
+    .social-btn:hover { filter: brightness(1.06); }
+    .social-btn.discord { background: linear-gradient(to bottom, #6f7dd6, #404eb8); }
+    .social-btn.google  { background: linear-gradient(to bottom, #d6555a, #a8353a); }
+    .social-btn .glyph { font-family: "Cinzel", serif; font-weight: 700; font-size: 1.05rem; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0 0.75rem;
+      color: var(--ink-soft);
+      font-family: "Cinzel", serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .divider::before, .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border-soft), transparent);
+    }
+
+    details.collapsible { margin-top: 1rem; }
+    details.collapsible > summary {
+      cursor: pointer;
+      font-family: "Cinzel", serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      padding: 0.35rem 0;
+    }
+    details.collapsible[open] > summary { color: var(--ink); }
+
+    .messages { list-style: none; margin: 0 0 0.75rem 0; padding: 0; }
+    .messages li {
+      padding: 0.45rem 0.7rem;
+      border-radius: 3px;
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+      background: rgba(255, 250, 230, 0.85);
+      border: 1px solid var(--border-soft);
+    }
+    .messages li.error {
+      background: linear-gradient(to bottom, #6b1818, #4a0e0e);
+      color: #fde2c8;
+      border-color: #4a0e0e;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

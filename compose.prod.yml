@@ -1,0 +1,32 @@
+# Production-like compose file for testing the prod build locally.
+# Usage:
+#   DJANGO_SECRET_KEY=$(python3 -c "import secrets;print(secrets.token_urlsafe(50))") \
+#   docker compose -f compose.prod.yml up --build
+#
+# The image bundles the built React frontend and serves everything from
+# Django/gunicorn at port 8000. The SQLite DB lives in a named volume so it
+# survives container restarts.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    volumes:
+      - sqlite_data:/data
+    environment:
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY env var is required}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      DJANGO_CSRF_TRUSTED: "${DJANGO_CSRF_TRUSTED:-}"
+      DJANGO_DB_PATH: /data/db.sqlite3
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
+      DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+    ports:
+      - "8000:8000"
+
+volumes:
+  sqlite_data:

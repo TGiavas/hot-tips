@@ -1,0 +1,49 @@
+{% extends "base_auth.html" %}
+{% load socialaccount %}
+{% block title %}Enter the arena - Hot Tips{% endblock %}
+{% block content %}
+<h1>Enter the arena</h1>
+
+{% if messages %}
+<ul class="messages">
+  {% for message in messages %}
+    <li class="{{ message.tags }}">{{ message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% get_providers as socialaccount_providers %}
+
+{% if socialaccount_providers %}
+<div class="social-list">
+  {% for provider in socialaccount_providers %}
+    {% if provider.id == "discord" %}
+      <a class="social-btn discord"
+         href="{% provider_login_url 'discord' process='login' next='/' %}">
+        <span class="glyph">D</span>
+        <span>Sign in with Discord</span>
+      </a>
+    {% elif provider.id == "google" %}
+      <a class="social-btn google"
+         href="{% provider_login_url 'google' process='login' next='/' %}">
+        <span class="glyph">G</span>
+        <span>Sign in with Google</span>
+      </a>
+    {% else %}
+      <a class="social-btn"
+         href="{% provider_login_url provider.id process='login' next='/' %}">
+        <span>Sign in with {{ provider.name }}</span>
+      </a>
+    {% endif %}
+  {% endfor %}
+</div>
+<p class="help" style="text-align:center;">
+  New here? Sign in with a provider and the admin will approve your account.
+</p>
+{% else %}
+<p class="help">
+  No social providers are configured. Ask the admin to set
+  <code>DISCORD_CLIENT_ID</code> / <code>GOOGLE_CLIENT_ID</code>.
+</p>
+{% endif %}
+{% endblock %}

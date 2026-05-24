@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/.dockerignore
+**/Dockerfile*
+**/compose*.yml
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/node_modules/
+**/dist/
+**/staticfiles/
+**/db.sqlite3
+**/data/
+.cursor/
+.idea/
+.vscode/
+*.md

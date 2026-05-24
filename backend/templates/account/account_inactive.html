@@ -1,0 +1,18 @@
+{% extends "base_auth.html" %}
+{% block title %}Awaiting approval - Hot Tips{% endblock %}
+{% block content %}
+<h1>Awaiting approval</h1>
+
+<p>
+  Welcome to the arena. Your account has been created, but the keeper of the
+  scrolls hasn't waved you through yet.
+</p>
+<p class="help">
+  Ping the admin — once they mark your account as active in the user list,
+  refresh this page and you'll be in. No further action on your part.
+</p>
+
+<form method="get" action="{% url 'account_logout' %}" style="margin-top:1.25rem;">
+  <button type="submit">Return to the gates</button>
+</form>
+{% endblock %}

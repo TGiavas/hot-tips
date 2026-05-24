@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# uv
+.uv-cache/
+
+# Django
+*.sqlite3
+*.sqlite3-journal
+staticfiles/
+backend/db.sqlite3
+backend/frontend_dist/
+
+# Node / Vite
+node_modules/
+frontend/dist/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Cursor / planning
+.cursor/
+
+# Fly
+.fly/
+
+# Local env (OAuth secrets etc.)
+.env
+.env.*
+!.env.example

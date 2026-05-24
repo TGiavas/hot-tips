@@ -1,0 +1,62 @@
+# Fly.io deployment config for Hot Tips.
+#
+# First-time setup (from a machine with flyctl installed):
+#   fly launch --no-deploy --name hot-tips --region <closest-region>
+#   fly volumes create hot_tips_data --size 1 --region <same-region>
+#   fly secrets set \
+#       DJANGO_SECRET_KEY="$(python3 -c 'import secrets;print(secrets.token_urlsafe(50))')" \
+#       DJANGO_ALLOWED_HOSTS="hot-tips.fly.dev" \
+#       DJANGO_CSRF_TRUSTED="https://hot-tips.fly.dev" \
+#       DISCORD_CLIENT_ID="..." \
+#       DISCORD_CLIENT_SECRET="..." \
+#       GOOGLE_CLIENT_ID="..." \
+#       GOOGLE_CLIENT_SECRET="..."
+#   fly deploy
+#
+# OAuth app setup:
+#   Discord: https://discord.com/developers/applications -> New Application
+#     -> OAuth2 -> add redirect URI:
+#        https://hot-tips.fly.dev/accounts/discord/login/callback/
+#   Google:  https://console.cloud.google.com/apis/credentials
+#     -> Create OAuth client ID -> Web application -> Authorized redirect URI:
+#        https://hot-tips.fly.dev/accounts/google/login/callback/
+#
+# Subsequent deploys:
+#   fly deploy
+#
+# After the first deploy, create your superuser:
+#   fly ssh console -C "uv run python manage.py createsuperuser"
+#   fly ssh console -C "uv run python manage.py seed_arena"
+
+app = "hot-tips"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+  build-target = "prod"
+
+[env]
+  DJANGO_DEBUG = "false"
+  DJANGO_DB_PATH = "/data/db.sqlite3"
+  PORT = "8000"
+
+[[mounts]]
+  source = "hot_tips_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 30
+    hard_limit = 60
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
