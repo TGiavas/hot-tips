@@ -133,8 +133,12 @@ class PendingApprovalListFilter(admin.SimpleListFilter):
         )
 
     def queryset(self, request, queryset):
+        # NOTE: ``None`` (no query param) must filter the same way as
+        # ``pending`` — otherwise the filter UI shows "Pending approval" as
+        # selected on first page load while the queryset silently returns
+        # *all* users, creating a misleading display state.
         value = self.value()
-        if value == "pending":
+        if value in (None, "pending"):
             return queryset.filter(is_active=False)
         if value == "approved":
             return queryset.filter(is_active=True)

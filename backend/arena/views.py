@@ -100,8 +100,13 @@ class ToggleTipView(APIView):
     * else create the row + audit ``activate``.
 
     The whole operation runs in ``transaction.atomic()`` with
-    ``select_for_update()`` over today's selections, so concurrent toggles
-    can't push the pool past 15.
+    ``select_for_update()`` over *all* of today's selections (not just the
+    row for this tip — that would lock nothing when activating a fresh tip
+    and let two concurrent activations both pass the cap check). On
+    Postgres this acquires row-level locks on every active selection for
+    today. On SQLite ``select_for_update`` is unsupported but
+    ``transaction.atomic`` serialises writes at the DB-file level, so the
+    cap stays honest there too.
     """
 
     permission_classes = [IsAuthenticated]
@@ -125,14 +130,18 @@ class ToggleTipView(APIView):
         game_day = current_game_day()
 
         with transaction.atomic():
-            # SQLite doesn't support row-level SELECT ... FOR UPDATE. Django's
-            # transaction.atomic() already serialises writes there, so we only
-            # add explicit row-locking when the backend supports it.
             base_qs = DailyTipSelection.objects.filter(date=game_day)
             if connection.features.has_select_for_update:
                 base_qs = base_qs.select_for_update()
-            existing_for_tip = list(base_qs.filter(tip=tip))
-            current_count = base_qs.count()
+            # Materialise the full day's rows in one query: this both locks
+            # them (on Postgres) and gives us a consistent view to derive
+            # `existing_for_tip` and `current_count` from. Filtering the
+            # queryset *after* this is essentially free — at most 15 rows.
+            todays_selections = list(base_qs)
+            existing_for_tip = [
+                s for s in todays_selections if s.tip_id == tip.id
+            ]
+            current_count = len(todays_selections)
 
             if existing_for_tip:
                 existing_for_tip[0].delete()
