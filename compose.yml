@@ -24,13 +24,11 @@ services:
       DJANGO_SECRET_KEY: dev-insecure-change-me-please
       DJANGO_ALLOWED_HOSTS: "*"
       DJANGO_DB_PATH: /app/db.sqlite3
-      # OAuth credentials are optional in dev — if blank, the corresponding
-      # social button is hidden on the login page. Set these in a local .env
-      # file (read automatically by `docker compose`) to test OAuth locally.
+      # OAuth credentials are optional in dev — if blank, the Discord button
+      # is hidden on the login page. Set these in a local .env file (read
+      # automatically by `docker compose`) to test OAuth locally.
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
-      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
-      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
     ports:
       - "8000:8000"
 

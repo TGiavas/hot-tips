@@ -23,12 +23,6 @@
         <span class="glyph">D</span>
         <span>Sign in with Discord</span>
       </a>
-    {% elif provider.id == "google" %}
-      <a class="social-btn google"
-         href="{% provider_login_url 'google' process='login' next='/' %}">
-        <span class="glyph">G</span>
-        <span>Sign in with Google</span>
-      </a>
     {% else %}
       <a class="social-btn"
          href="{% provider_login_url provider.id process='login' next='/' %}">
@@ -38,12 +32,12 @@
   {% endfor %}
 </div>
 <p class="help" style="text-align:center;">
-  New here? Sign in with a provider and the admin will approve your account.
+  New here? Sign in with Discord and the admin will approve your account.
 </p>
 {% else %}
 <p class="help">
-  No social providers are configured. Ask the admin to set
-  <code>DISCORD_CLIENT_ID</code> / <code>GOOGLE_CLIENT_ID</code>.
+  Discord login isn't configured. Ask the admin to set
+  <code>DISCORD_CLIENT_ID</code> + <code>DISCORD_CLIENT_SECRET</code>.
 </p>
 {% endif %}
 {% endblock %}

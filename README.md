@@ -53,12 +53,12 @@ docker compose down                                  # stop everything
 docker compose down -v                               # also wipe the dev SQLite DB and node_modules volume
 ```
 
-### Onboarding new users (OAuth + admin approval)
+### Onboarding new users (Discord OAuth + admin approval)
 
-The primary path is "user signs in with Discord or Google, admin approves them":
+The primary path is "user signs in with Discord, admin approves them":
 
-1. User visits the site and clicks **Sign in with Discord** (or **Google**) on `/accounts/login/`.
-2. They authorize on the provider's site and get redirected back.
+1. User visits the site and clicks **Sign in with Discord** on `/accounts/login/`.
+2. They authorize on Discord and get redirected back.
 3. Their account is created with `is_active=False`, and they see the **Awaiting approval** page.
 4. You (admin) open <http://localhost:8000/admin/auth/user/> — the list defaults to **Pending approval**, so you see the new signup at the top.
 5. Tick the user, choose **Approve selected users (set Active)** from the actions menu, click **Go**.
@@ -68,49 +68,34 @@ No emails, no password-set links, no manual user creation.
 
 If for some reason you need a local username/password account (e.g. a non-OAuth admin), use the standard **Add user** form at `/admin/auth/user/add/` — it works the normal Django way (set a password, mark `is_active=True`, optionally `is_staff=True`).
 
-### Setting up OAuth credentials
+### Setting up the Discord OAuth app
 
-Both providers are optional — if you only configure Discord, the Google button is hidden, and vice versa.
+A single Discord OAuth app can serve both dev and prod (you just list multiple redirect URIs on it).
 
-#### Discord
-
-1. Go to <https://discord.com/developers/applications> and click **New Application**. Name it "Hot Tips" (or whatever).
+1. Go to <https://discord.com/developers/applications> and click **New Application**. Name it "Hot Tips".
 2. In the left sidebar, open **OAuth2**.
-3. Under **Redirects**, add:
+3. Under **Redirects**, click **Add Another** for each environment you want:
    - `http://localhost:5173/accounts/discord/login/callback/` (dev, via Vite)
-   - `http://localhost:8000/accounts/discord/login/callback/` (dev, direct)
-   - `https://hot-tips.fly.dev/accounts/discord/login/callback/` (prod, adjust hostname)
-4. Copy **Client ID** and **Client Secret**. (Click **Reset Secret** if you need to see it.)
-
-#### Google
-
-1. Go to <https://console.cloud.google.com/apis/credentials> and create a project if you haven't.
-2. **Create Credentials → OAuth client ID → Web application**.
-3. Under **Authorized redirect URIs**, add the same `/accounts/google/login/callback/` URLs as above.
-4. (On the **OAuth consent screen** page, configure the app name + support email; for a small trusted-user app, "External" + "Testing" mode is fine.)
-5. Copy the **Client ID** and **Client Secret**.
+   - `https://your-app.fly.dev/accounts/discord/login/callback/` (prod — replace with your actual Fly hostname)
+4. Copy **Client ID**. Click **Reset Secret** to reveal **Client Secret**.
 
 #### Wiring credentials into dev
 
-Drop this into a `.env` next to `compose.yml` (it's read automatically by `docker compose`):
+Drop this into a `.env` next to `compose.yml` (read automatically by `docker compose`):
 
 ```dotenv
 DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
 ```
 
-Then `docker compose up` and the buttons appear on `/accounts/login/`.
+Then `docker compose down && docker compose up` and the Discord button appears on `/accounts/login/`.
 
 #### Wiring credentials into Fly
 
 ```bash
 fly secrets set \
     DISCORD_CLIENT_ID="..." \
-    DISCORD_CLIENT_SECRET="..." \
-    GOOGLE_CLIENT_ID="..." \
-    GOOGLE_CLIENT_SECRET="..."
+    DISCORD_CLIENT_SECRET="..."
 ```
 
 ## Production build (local sanity check)
@@ -133,8 +118,8 @@ fly secrets set \
     DJANGO_SECRET_KEY="$(python3 -c 'import secrets;print(secrets.token_urlsafe(50))')" \
     DJANGO_ALLOWED_HOSTS="hot-tips.fly.dev" \
     DJANGO_CSRF_TRUSTED="https://hot-tips.fly.dev" \
-    DISCORD_CLIENT_ID="..." DISCORD_CLIENT_SECRET="..." \
-    GOOGLE_CLIENT_ID="..."  GOOGLE_CLIENT_SECRET="..."
+    DISCORD_CLIENT_ID="..." \
+    DISCORD_CLIENT_SECRET="..."
 fly deploy
 ```
 
@@ -189,5 +174,5 @@ hot-tips/
 - **15-tip cap**: enforced in `arena/views.py::ToggleTipView` inside `transaction.atomic()` with `select_for_update()` on today's `DailyTipSelection` rows. Two simultaneous activations cannot push the pool past 15.
 - **Audit log**: every activate/deactivate writes a `DailyTipAuditLog` row; admin lists are read-only.
 - **Polling**: the frontend re-fetches `/api/arena/state/` every 10 s when the tab is visible (paused otherwise). Simple, robust, and enough for a small user base.
-- **Auth**: Django session cookies + CSRF, same-origin in production (Vite proxy in dev). Social login via `django-allauth` (Discord + Google). New signups land in `is_active=False` via a `SocialAccountAdapter` override and stay there until an admin approves them in `/admin/auth/user/`. DRF uses `SessionAuthentication` only; anonymous viewers get read-only access (no `IsAuthenticated` on `GET /api/arena/state/`).
+- **Auth**: Django session cookies + CSRF, same-origin in production (Vite proxy in dev). Social login via `django-allauth` (Discord). New signups land in `is_active=False` via a `SocialAccountAdapter` override and stay there until an admin approves them in `/admin/auth/user/`. DRF uses `SessionAuthentication` only; anonymous viewers get read-only access (no `IsAuthenticated` on `GET /api/arena/state/`).
 - **Static assets**: WhiteNoise compresses and serves the built React bundle. Vite content-hashes filenames, so we use `CompressedStaticFilesStorage` (no double-hashing manifest).

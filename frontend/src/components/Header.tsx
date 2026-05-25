@@ -56,7 +56,7 @@ export const Header = ({ gameDay, knownTipCount, maxTips, whoami }: Props) => {
                 window.location.href = '/accounts/login/?next=/'
               }}
             >
-              Sign in with Discord / Google
+              Sign in with Discord
             </button>
           </>
         )}

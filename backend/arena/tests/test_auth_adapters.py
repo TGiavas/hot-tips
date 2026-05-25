@@ -2,8 +2,10 @@
 
 The contract we're locking in here:
 
-1. ``HotTipsAccountAdapter.is_open_for_signup`` returns False — local email
-   signups are disabled.
+1. ``/accounts/signup/`` (the email/password signup URL) redirects to login,
+   so there's no self-service local signup form. NB: the account adapter's
+   ``is_open_for_signup`` *does* return True — allauth shares that flag with
+   the social signup helper, so we have to block at the URL level instead.
 2. ``HotTipsSocialAccountAdapter.save_user`` flips ``is_active`` to False on
    first-time social signups, regardless of what allauth's defaults would do.
 3. Inactive users still can't toggle tips even with a valid session.
@@ -34,10 +36,16 @@ def _make_request(rf, method="post", path="/"):
     return request
 
 
-def test_account_adapter_disables_local_signup(rf):
-    from arena.adapters import HotTipsAccountAdapter
+def test_email_signup_url_redirects_to_login(client):
+    """The email/password signup form must be unreachable.
 
-    assert HotTipsAccountAdapter().is_open_for_signup(rf.get("/")) is False
+    We can't simply return False from the account adapter (that would also
+    block Discord onboarding), so the URL is intercepted in hot_tips.urls
+    and bounces both GET and POST back to the login page.
+    """
+    for response in (client.get("/accounts/signup/"), client.post("/accounts/signup/")):
+        assert response.status_code in (301, 302)
+        assert response["Location"].rstrip("/") == "/accounts/login"
 
 
 def test_social_adapter_marks_new_users_inactive(rf):

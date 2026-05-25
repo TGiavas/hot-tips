@@ -8,18 +8,13 @@
 #       DJANGO_ALLOWED_HOSTS="hot-tips.fly.dev" \
 #       DJANGO_CSRF_TRUSTED="https://hot-tips.fly.dev" \
 #       DISCORD_CLIENT_ID="..." \
-#       DISCORD_CLIENT_SECRET="..." \
-#       GOOGLE_CLIENT_ID="..." \
-#       GOOGLE_CLIENT_SECRET="..."
+#       DISCORD_CLIENT_SECRET="..."
 #   fly deploy
 #
 # OAuth app setup:
 #   Discord: https://discord.com/developers/applications -> New Application
 #     -> OAuth2 -> add redirect URI:
 #        https://hot-tips.fly.dev/accounts/discord/login/callback/
-#   Google:  https://console.cloud.google.com/apis/credentials
-#     -> Create OAuth client ID -> Web application -> Authorized redirect URI:
-#        https://hot-tips.fly.dev/accounts/google/login/callback/
 #
 # Subsequent deploys:
 #   fly deploy

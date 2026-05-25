@@ -4,9 +4,9 @@ Static data (fighters, matchups, tip definitions) is fully editable. Daily
 selections are editable for manual correction (per SPEC.md section 15).
 The audit log is read-only.
 
-User admin highlights pending OAuth signups: anyone who lands via Discord or
-Google starts with ``is_active=False`` (see ``arena.adapters``), so the list
-view defaults to "Pending approval" so they're not buried under the noise of
+User admin highlights pending OAuth signups: anyone who lands via Discord
+starts with ``is_active=False`` (see ``arena.adapters``), so the list view
+defaults to "Pending approval" so they're not buried under the noise of
 already-approved members.
 """
 from __future__ import annotations

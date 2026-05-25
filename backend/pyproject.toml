@@ -9,7 +9,7 @@ dependencies = [
     "gunicorn>=23.0,<24.0",
     "whitenoise[brotli]>=6.7,<7.0",
     "django-allauth[socialaccount]>=65.3,<66.0",
-    # Required by allauth's OAuth2 providers (Discord, Google).
+    # Required by allauth's OAuth2 providers (Discord).
     "requests>=2.32,<3.0",
     "PyJWT>=2.9,<3.0",
 ]

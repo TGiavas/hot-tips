@@ -8,13 +8,11 @@ Environment variables (all optional in dev):
     DJANGO_DB_PATH         absolute path to SQLite file (default: backend/db.sqlite3)
     DISCORD_CLIENT_ID      OAuth2 Client ID from https://discord.com/developers
     DISCORD_CLIENT_SECRET  OAuth2 Client Secret from same page
-    GOOGLE_CLIENT_ID       OAuth2 Client ID from https://console.cloud.google.com/apis/credentials
-    GOOGLE_CLIENT_SECRET   OAuth2 Client Secret from same page
 
 Auth model:
     * Anyone can read the arena state (anonymous GET allowed).
     * To make a tip, you need an *active* account.
-    * New users sign up via Discord or Google OAuth (django-allauth).
+    * New users sign up via Discord OAuth (django-allauth).
     * Every social signup creates a user with ``is_active=False`` and lands
       on /accounts/inactive/ until an admin flips ``is_active`` in
       /admin/auth/user/.
@@ -80,7 +78,6 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.discord",
-    "allauth.socialaccount.providers.google",
     "rest_framework",
     "arena",
 ]
@@ -175,7 +172,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # --- Auth & session ---
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/accounts/login/"
+# Both the Header "Log out" button and the "Return to Hot Tips" button on
+# /accounts/inactive/ point at /accounts/logout/. Sending users to the arena
+# afterwards (rather than back to the login form) feels right in both cases —
+# logged-out viewers can still see the read-only state.
+LOGOUT_REDIRECT_URL = "/"
 
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
@@ -195,8 +196,8 @@ AUTHENTICATION_BACKENDS = [
 # --- django-allauth ---
 ACCOUNT_ADAPTER = "arena.adapters.HotTipsAccountAdapter"
 SOCIALACCOUNT_ADAPTER = "arena.adapters.HotTipsSocialAccountAdapter"
-# No self-service email signups: every new account must come through a social
-# provider (Discord/Google). Admins can still create local users in /admin/.
+# No self-service email signups: every new account must come through Discord.
+# Admins can still create local users in /admin/auth/user/.
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "none"
@@ -213,8 +214,6 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 # wiring required.
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", "")
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "")
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
 SOCIALACCOUNT_PROVIDERS: dict = {}
 if DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET:
@@ -223,16 +222,6 @@ if DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET:
         "APP": {
             "client_id": DISCORD_CLIENT_ID,
             "secret": DISCORD_CLIENT_SECRET,
-            "key": "",
-        },
-    }
-if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
-    SOCIALACCOUNT_PROVIDERS["google"] = {
-        "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
-        "APP": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "secret": GOOGLE_CLIENT_SECRET,
             "key": "",
         },
     }
