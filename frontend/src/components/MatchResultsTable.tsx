@@ -28,9 +28,10 @@ const COLUMNS: Column[] = [
 // it reads as the broadest-to-narrowest filter from top to bottom.
 const THRESHOLD_OPTIONS = [0, 50, 55, 60, 65, 70] as const
 
-// Each backend match shows up twice (cartesian product) so the user can
-// always read the leading fighter off the left-most column regardless of
-// which "side" of the matchup they happen to be looking for.
+// Each backend match shows up exactly once, but oriented so the leading
+// fighter is always in the left column. Ties keep the original direction.
+// (The cartesian-product approach added duplicate rows at low thresholds;
+// users found the duplicates confusing, so we collapse them.)
 type Row = MatchResult & { direction: 'forward' | 'reversed' }
 
 export const MatchResultsTable = ({ results, gameDay }: Props) => {
@@ -41,26 +42,26 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
   // hiding modest favorites.
   const [minPercent, setMinPercent] = useState<number>(55)
 
-  const expanded: Row[] = useMemo(
+  const oriented: Row[] = useMemo(
     () =>
-      results.flatMap((r): Row[] => [
-        { ...r, direction: 'forward' },
-        {
-          ...r,
-          // Mirror the row so the leading fighter can appear on the left.
-          fighter_a: r.fighter_b,
-          fighter_b: r.fighter_a,
-          fighter_a_percent: r.fighter_b_percent,
-          fighter_b_percent: r.fighter_a_percent,
-          direction: 'reversed',
-        },
-      ]),
+      results.map((r): Row =>
+        r.fighter_a_percent >= r.fighter_b_percent
+          ? { ...r, direction: 'forward' }
+          : {
+              ...r,
+              fighter_a: r.fighter_b,
+              fighter_b: r.fighter_a,
+              fighter_a_percent: r.fighter_b_percent,
+              fighter_b_percent: r.fighter_a_percent,
+              direction: 'reversed',
+            },
+      ),
     [results],
   )
 
   const filtered = useMemo(
-    () => expanded.filter((r) => r.fighter_a_percent >= minPercent),
-    [expanded, minPercent],
+    () => oriented.filter((r) => r.fighter_a_percent >= minPercent),
+    [oriented, minPercent],
   )
 
   const sorted = useMemo(() => {
@@ -96,30 +97,15 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
   }
 
   // Lazy: rebuild on click so the export always reflects current filter/sort.
-  const buildExportText = (): string => {
-    const lines: string[] = []
-    lines.push(`Hot Tips - Match Results - ${gameDay}`)
-    lines.push('')
-    const filterDesc =
-      minPercent === 0
-        ? 'no threshold'
-        : `leading fighter >= ${minPercent}%`
-    lines.push(
-      `Filter: ${filterDesc} (${sorted.length} of ${expanded.length} rows)`,
-    )
-    lines.push('')
-    if (sorted.length === 0) {
-      lines.push('(no matches above threshold)')
-    } else {
-      for (const r of sorted) {
-        lines.push(
-          `${r.fighter_a} (${r.fighter_a_percent}%) vs ` +
-            `${r.fighter_b} (${r.fighter_b_percent}%)`,
-        )
-      }
-    }
-    return lines.join('\n')
-  }
+  // Format is intentionally terse — meant to be pasted directly into game chat.
+  // Example: "Corrrak > Gloz (60%)"
+  const buildExportText = (): string =>
+    sorted
+      .map(
+        (r) =>
+          `${r.fighter_a} > ${r.fighter_b} (${r.fighter_a_percent}%)`,
+      )
+      .join('\n')
 
   return (
     <>
@@ -140,7 +126,7 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
           </select>
         </label>
         <span className="muted small">
-          Showing {sorted.length} of {expanded.length} rows
+          Showing {sorted.length} of {oriented.length} rows
         </span>
         <ExportButtons
           getText={buildExportText}
