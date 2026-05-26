@@ -425,6 +425,11 @@ tbody tr:nth-child(odd) {
 }
 tbody tr:hover { background: rgba(184, 134, 44, 0.10); }
 
+/* The match-results table now color-codes cells green/red by win %.
+   Zebra striping competes with that signal, so suppress it there.
+   Hover state stays for interactive feedback. */
+.panel-results tbody tr:nth-child(odd) { background: transparent; }
+
 /* ---------- Tip toggle buttons (the bread + butter) ---------- */
 
 .toggle-btn {

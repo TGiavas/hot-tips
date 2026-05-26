@@ -34,11 +34,16 @@ const THRESHOLD_OPTIONS = [0, 50, 55, 60, 65, 70] as const
 // We deliberately use the theme's existing `moss` (#4d6b2b) and `oxblood`
 // (#6b1818) so the highlight reads as parchment+ink rather than fighting
 // the aesthetic. Alpha tops out at 0.4 so dark ink text stays legible.
-// Tip-driven percentages currently fall in roughly 25..75, so we divide
-// by 25 to get 0..1 across that range.
+//
+// Intensity scale (50% = neutral, 70% / 30% = full strength):
+//   50/50   -> 0.00 alpha (no tint)
+//   55/45   -> 0.10 alpha (very faint)
+//   60/40   -> 0.20 alpha (mild)
+//   65/35   -> 0.30 alpha (moderate)
+//   70+/30- -> 0.40 alpha (max, clamped)
 const tintStyle = (pct: number): CSSProperties => {
   if (pct === 50) return {}
-  const intensity = Math.min(1, Math.abs(pct - 50) / 25)
+  const intensity = Math.min(1, Math.abs(pct - 50) / 20)
   const alpha = intensity * 0.4
   const rgb = pct > 50 ? '77, 107, 43' : '107, 24, 24'
   return { backgroundColor: `rgba(${rgb}, ${alpha})` }
@@ -121,23 +126,23 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
   }
 
   // Lazy: rebuild on click so the export always reflects current filter/sort.
-  // The on-screen table is a cartesian product, but the export deduplicates
-  // by matchup_id and always puts the leading fighter on the left, so chat
-  // gets one clean line per matchup. Example: "Corrrak > Gloz (60%)"
-  const buildExportText = (): string => {
-    const seen = new Set<number>()
-    const lines: string[] = []
-    for (const r of sorted) {
-      if (seen.has(r.matchup_id)) continue
-      seen.add(r.matchup_id)
-      const leadingFirst = r.fighter_a_percent >= r.fighter_b_percent
-      const left = leadingFirst ? r.fighter_a : r.fighter_b
-      const right = leadingFirst ? r.fighter_b : r.fighter_a
-      const pct = leadingFirst ? r.fighter_a_percent : r.fighter_b_percent
-      lines.push(`${left} > ${right} (${pct}%)`)
-    }
-    return lines.join('\n')
-  }
+  // The export is a 1:1 mirror of the visible table — one line per row, in
+  // the same order. The comparison operator always points at the winner:
+  //   A% > B%   ->  "Corrrak > Gloz (60%)"   (left fighter wins)
+  //   A% < B%   ->  "Gloz < Corrrak (40%)"   (right fighter wins)
+  //   A% == B%  ->  "Corrrak = Gloz (50%)"   (50/50)
+  const buildExportText = (): string =>
+    sorted
+      .map((r) => {
+        const op =
+          r.fighter_a_percent > r.fighter_b_percent
+            ? '>'
+            : r.fighter_a_percent < r.fighter_b_percent
+              ? '<'
+              : '='
+        return `${r.fighter_a} ${op} ${r.fighter_b} (${r.fighter_a_percent}%)`
+      })
+      .join('\n')
 
   return (
     <>
