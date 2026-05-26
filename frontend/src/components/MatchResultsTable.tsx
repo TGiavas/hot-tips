@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 
 import type { MatchResult } from '../types'
 import { ExportButtons } from './ExportButtons'
@@ -28,10 +29,25 @@ const COLUMNS: Column[] = [
 // it reads as the broadest-to-narrowest filter from top to bottom.
 const THRESHOLD_OPTIONS = [0, 50, 55, 60, 65, 70] as const
 
-// Each backend match shows up exactly once, but oriented so the leading
-// fighter is always in the left column. Ties keep the original direction.
-// (The cartesian-product approach added duplicate rows at low thresholds;
-// users found the duplicates confusing, so we collapse them.)
+// Per-cell green/red tint that scales with distance from 50%.
+//
+// We deliberately use the theme's existing `moss` (#4d6b2b) and `oxblood`
+// (#6b1818) so the highlight reads as parchment+ink rather than fighting
+// the aesthetic. Alpha tops out at 0.4 so dark ink text stays legible.
+// Tip-driven percentages currently fall in roughly 25..75, so we divide
+// by 25 to get 0..1 across that range.
+const tintStyle = (pct: number): CSSProperties => {
+  if (pct === 50) return {}
+  const intensity = Math.min(1, Math.abs(pct - 50) / 25)
+  const alpha = intensity * 0.4
+  const rgb = pct > 50 ? '77, 107, 43' : '107, 24, 24'
+  return { backgroundColor: `rgba(${rgb}, ${alpha})` }
+}
+
+// Each backend match shows up TWICE in the table (cartesian product) so
+// the user can always read every matchup for a given fighter off the left
+// column. The TXT/Copy export deduplicates by matchup_id and always orients
+// the leading fighter on the left, so chat doesn't get spammed.
 type Row = MatchResult & { direction: 'forward' | 'reversed' }
 
 export const MatchResultsTable = ({ results, gameDay }: Props) => {
@@ -41,28 +57,36 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
   // a match here), so it's a sensible default that hides 50/50 noise without
   // hiding modest favorites.
   const [minPercent, setMinPercent] = useState<number>(55)
+  const [search, setSearch] = useState<string>('')
 
-  const oriented: Row[] = useMemo(
+  const expanded: Row[] = useMemo(
     () =>
-      results.map((r): Row =>
-        r.fighter_a_percent >= r.fighter_b_percent
-          ? { ...r, direction: 'forward' }
-          : {
-              ...r,
-              fighter_a: r.fighter_b,
-              fighter_b: r.fighter_a,
-              fighter_a_percent: r.fighter_b_percent,
-              fighter_b_percent: r.fighter_a_percent,
-              direction: 'reversed',
-            },
-      ),
+      results.flatMap((r): Row[] => [
+        { ...r, direction: 'forward' },
+        {
+          ...r,
+          fighter_a: r.fighter_b,
+          fighter_b: r.fighter_a,
+          fighter_a_percent: r.fighter_b_percent,
+          fighter_b_percent: r.fighter_a_percent,
+          direction: 'reversed',
+        },
+      ]),
     [results],
   )
 
-  const filtered = useMemo(
-    () => oriented.filter((r) => r.fighter_a_percent >= minPercent),
-    [oriented, minPercent],
-  )
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return expanded.filter((r) => {
+      if (r.fighter_a_percent < minPercent) return false
+      if (q.length === 0) return true
+      // Match only the LEFT column. The cartesian product guarantees every
+      // fighter appears in the left column for each of their matchups, so
+      // searching "Corrrak" surfaces exactly Corrrak's 6 rows — no doubled
+      // hits from matching the opponent column.
+      return r.fighter_a.toLowerCase().includes(q)
+    })
+  }, [expanded, minPercent, search])
 
   const sorted = useMemo(() => {
     const factor = sortDir === 'asc' ? 1 : -1
@@ -97,19 +121,35 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
   }
 
   // Lazy: rebuild on click so the export always reflects current filter/sort.
-  // Format is intentionally terse — meant to be pasted directly into game chat.
-  // Example: "Corrrak > Gloz (60%)"
-  const buildExportText = (): string =>
-    sorted
-      .map(
-        (r) =>
-          `${r.fighter_a} > ${r.fighter_b} (${r.fighter_a_percent}%)`,
-      )
-      .join('\n')
+  // The on-screen table is a cartesian product, but the export deduplicates
+  // by matchup_id and always puts the leading fighter on the left, so chat
+  // gets one clean line per matchup. Example: "Corrrak > Gloz (60%)"
+  const buildExportText = (): string => {
+    const seen = new Set<number>()
+    const lines: string[] = []
+    for (const r of sorted) {
+      if (seen.has(r.matchup_id)) continue
+      seen.add(r.matchup_id)
+      const leadingFirst = r.fighter_a_percent >= r.fighter_b_percent
+      const left = leadingFirst ? r.fighter_a : r.fighter_b
+      const right = leadingFirst ? r.fighter_b : r.fighter_a
+      const pct = leadingFirst ? r.fighter_a_percent : r.fighter_b_percent
+      lines.push(`${left} > ${right} (${pct}%)`)
+    }
+    return lines.join('\n')
+  }
 
   return (
     <>
       <div className="table-toolbar">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search fighter…"
+          className="search-input"
+          aria-label="Search by fighter name"
+        />
         <label className="filter-label">
           <span>Show matches with leading fighter at least</span>
           <select
@@ -126,7 +166,7 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
           </select>
         </label>
         <span className="muted small">
-          Showing {sorted.length} of {oriented.length} rows
+          Showing {sorted.length} of {expanded.length} rows
         </span>
         <ExportButtons
           getText={buildExportText}
@@ -163,20 +203,30 @@ export const MatchResultsTable = ({ results, gameDay }: Props) => {
           {sorted.length === 0 ? (
             <tr>
               <td colSpan={COLUMNS.length} className="muted small empty-row">
-                {minPercent === 0
-                  ? 'No matches to show.'
-                  : `No matches above ${minPercent}%. Lower the threshold to see more.`}
+                {search.trim().length > 0
+                  ? `No matches for "${search.trim()}".`
+                  : minPercent === 0
+                    ? 'No matches to show.'
+                    : `No matches above ${minPercent}%. Lower the threshold to see more.`}
               </td>
             </tr>
           ) : (
-            sorted.map((r) => (
-              <tr key={`${r.matchup_id}-${r.direction}`}>
-                <td>{r.fighter_a}</td>
-                <td className="num">{r.fighter_a_percent}</td>
-                <td>{r.fighter_b}</td>
-                <td className="num">{r.fighter_b_percent}</td>
-              </tr>
-            ))
+            sorted.map((r) => {
+              const aStyle = tintStyle(r.fighter_a_percent)
+              const bStyle = tintStyle(r.fighter_b_percent)
+              return (
+                <tr key={`${r.matchup_id}-${r.direction}`}>
+                  <td style={aStyle}>{r.fighter_a}</td>
+                  <td className="num" style={aStyle}>
+                    {r.fighter_a_percent}
+                  </td>
+                  <td style={bStyle}>{r.fighter_b}</td>
+                  <td className="num" style={bStyle}>
+                    {r.fighter_b_percent}
+                  </td>
+                </tr>
+              )
+            })
           )}
         </tbody>
       </table>

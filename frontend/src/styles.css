@@ -309,6 +309,25 @@ button { font: inherit; cursor: pointer; }
   outline-offset: -1px;
 }
 
+.search-input {
+  width: 11rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 230, 0.85);
+  color: var(--ink);
+  border-radius: 3px;
+  font: inherit;
+}
+.search-input::placeholder {
+  color: var(--ink-mute);
+  font-style: italic;
+  opacity: 0.85;
+}
+.search-input:focus {
+  outline: 2px solid var(--brass);
+  outline-offset: -1px;
+}
+
 .ghost-btn {
   padding: 0.32rem 0.85rem;
   background:
