@@ -29,69 +29,67 @@ export const FighterTipsTab = ({
   }
 
   return (
-    <div className="scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Fighter</th>
-            <th>+5%</th>
-            <th>-5%</th>
-            <th>Submitted by</th>
-          </tr>
-        </thead>
-        <tbody>
-          {state.fighters.map((fighter) => {
-            const row = tipsByFighter.get(fighter.id)
-            const plusActive = row?.plus != null ? activeByTipId.get(row.plus) : undefined
-            const minusActive = row?.minus != null ? activeByTipId.get(row.minus) : undefined
-            return (
-              <tr key={fighter.id}>
-                <td>{fighter.name}</td>
-                <td>
-                  {row?.plus != null ? (
-                    <TipToggleButton
-                      tipId={row.plus}
-                      label={`${fighter.name} +5%`}
-                      active={plusActive}
-                      poolFull={poolFull}
-                      pending={pendingTipIds.has(row.plus)}
-                      canEdit={canEdit}
-                      onClick={onToggle}
-                    />
-                  ) : null}
-                </td>
-                <td>
-                  {row?.minus != null ? (
-                    <TipToggleButton
-                      tipId={row.minus}
-                      label={`${fighter.name} -5%`}
-                      active={minusActive}
-                      poolFull={poolFull}
-                      pending={pendingTipIds.has(row.minus)}
-                      canEdit={canEdit}
-                      onClick={onToggle}
-                    />
-                  ) : null}
-                </td>
-                <td className="submitters">
-                  {plusActive ? (
-                    <div>
-                      <span className="badge badge-plus">+5%</span>{' '}
-                      {plusActive.submitted_by.display_name}
-                    </div>
-                  ) : null}
-                  {minusActive ? (
-                    <div>
-                      <span className="badge badge-minus">-5%</span>{' '}
-                      {minusActive.submitted_by.display_name}
-                    </div>
-                  ) : null}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Fighter</th>
+          <th>+5%</th>
+          <th>-5%</th>
+          <th>Submitted by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {state.fighters.map((fighter) => {
+          const row = tipsByFighter.get(fighter.id)
+          const plusActive = row?.plus != null ? activeByTipId.get(row.plus) : undefined
+          const minusActive = row?.minus != null ? activeByTipId.get(row.minus) : undefined
+          return (
+            <tr key={fighter.id}>
+              <td>{fighter.name}</td>
+              <td>
+                {row?.plus != null ? (
+                  <TipToggleButton
+                    tipId={row.plus}
+                    label={`${fighter.name} +5%`}
+                    active={plusActive}
+                    poolFull={poolFull}
+                    pending={pendingTipIds.has(row.plus)}
+                    canEdit={canEdit}
+                    onClick={onToggle}
+                  />
+                ) : null}
+              </td>
+              <td>
+                {row?.minus != null ? (
+                  <TipToggleButton
+                    tipId={row.minus}
+                    label={`${fighter.name} -5%`}
+                    active={minusActive}
+                    poolFull={poolFull}
+                    pending={pendingTipIds.has(row.minus)}
+                    canEdit={canEdit}
+                    onClick={onToggle}
+                  />
+                ) : null}
+              </td>
+              <td className="submitters">
+                {plusActive ? (
+                  <div>
+                    <span className="badge badge-plus">+5%</span>{' '}
+                    {plusActive.submitted_by.display_name}
+                  </div>
+                ) : null}
+                {minusActive ? (
+                  <div>
+                    <span className="badge badge-minus">-5%</span>{' '}
+                    {minusActive.submitted_by.display_name}
+                  </div>
+                ) : null}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }

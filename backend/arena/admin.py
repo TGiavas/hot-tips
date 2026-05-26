@@ -169,7 +169,7 @@ class HotTipsUserAdmin(UserAdmin):
     actions = [approve_users]
     list_display = (
         "username",
-        "first_name",
+        "discord_display_name",
         "email",
         "social_providers",
         "is_active",
@@ -178,6 +178,29 @@ class HotTipsUserAdmin(UserAdmin):
     )
     list_filter = (PendingApprovalListFilter, "is_staff", "is_superuser")
     ordering = ("is_active", "-date_joined")
+
+    @admin.display(description="Discord display name")
+    def discord_display_name(self, obj) -> str:
+        """Live display name pulled from the Discord SocialAccount.
+
+        We prefer this over ``User.first_name`` because ``first_name`` is
+        only a cache that gets populated on signup / refreshed on each
+        social login (see ``arena.adapters.HotTipsSocialAccountAdapter``).
+        Reading straight from ``extra_data`` shows the freshest value
+        Discord returned, with sensible fallbacks if ``global_name`` is
+        null.
+        """
+        for sa in obj.socialaccount_set.all():
+            if sa.provider != "discord":
+                continue
+            data = sa.extra_data or {}
+            return (
+                data.get("global_name")
+                or data.get("username")
+                or obj.first_name
+                or "—"
+            )
+        return obj.first_name or "—"
 
     @admin.display(description="Social")
     def social_providers(self, obj) -> str:

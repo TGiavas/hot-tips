@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { ApiError, ensureCsrf, fetchWhoAmI, toggleTip } from './api'
+import { ExportButtons } from './components/ExportButtons'
 import { Header } from './components/Header'
 import { FighterTipsTab } from './components/FighterTipsTab'
 import { MatchResultsTable } from './components/MatchResultsTable'
 import { MatchupTipsTab } from './components/MatchupTipsTab'
+import { buildTipsExportText } from './exportText'
 import { usePolledArenaState } from './usePolledArenaState'
 import type { ActiveTip, WhoAmI } from './types'
 
@@ -131,7 +133,10 @@ const Main = ({ whoami }: MainProps) => {
       <main className="workspace">
         <section className="panel panel-results">
           <h2>Match Results</h2>
-          <MatchResultsTable results={state.match_results} />
+          <MatchResultsTable
+            results={state.match_results}
+            gameDay={state.game_day}
+          />
         </section>
         <section className="panel">
           <h2>Tip Selection</h2>
@@ -150,6 +155,10 @@ const Main = ({ whoami }: MainProps) => {
             >
               Matchup Tips
             </button>
+            <ExportButtons
+              getText={() => buildTipsExportText(state, activeByTipId)}
+              filename={`hot-tips-${state.game_day}.txt`}
+            />
           </div>
           {tab === 'fighter' ? (
             <FighterTipsTab

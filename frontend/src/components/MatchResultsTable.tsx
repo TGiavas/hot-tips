@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
 
 import type { MatchResult } from '../types'
+import { ExportButtons } from './ExportButtons'
 
 type Props = {
   results: MatchResult[]
+  gameDay: string
 }
 
-type SortKey = 'default' | 'fighter_a' | 'a_pct' | 'fighter_b' | 'b_pct'
+type SortKey = 'fighter_a' | 'a_pct' | 'fighter_b' | 'b_pct'
 type SortDir = 'asc' | 'desc'
 
 type Column = {
-  key: Exclude<SortKey, 'default'>
+  key: SortKey
   label: string
   numeric: boolean
 }
@@ -22,14 +24,48 @@ const COLUMNS: Column[] = [
   { key: 'b_pct', label: 'B %', numeric: true },
 ]
 
-export const MatchResultsTable = ({ results }: Props) => {
-  const [sortKey, setSortKey] = useState<SortKey>('default')
+// `0` means "no threshold" — labeled as "All" in the UI. Listed first so
+// it reads as the broadest-to-narrowest filter from top to bottom.
+const THRESHOLD_OPTIONS = [0, 50, 55, 60, 65, 70] as const
+
+// Each backend match shows up twice (cartesian product) so the user can
+// always read the leading fighter off the left-most column regardless of
+// which "side" of the matchup they happen to be looking for.
+type Row = MatchResult & { direction: 'forward' | 'reversed' }
+
+export const MatchResultsTable = ({ results, gameDay }: Props) => {
+  const [sortKey, setSortKey] = useState<SortKey>('a_pct')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  // 55% is the first "real" favorite tier (a single +5% fighter tip nudges
+  // a match here), so it's a sensible default that hides 50/50 noise without
+  // hiding modest favorites.
+  const [minPercent, setMinPercent] = useState<number>(55)
+
+  const expanded: Row[] = useMemo(
+    () =>
+      results.flatMap((r): Row[] => [
+        { ...r, direction: 'forward' },
+        {
+          ...r,
+          // Mirror the row so the leading fighter can appear on the left.
+          fighter_a: r.fighter_b,
+          fighter_b: r.fighter_a,
+          fighter_a_percent: r.fighter_b_percent,
+          fighter_b_percent: r.fighter_a_percent,
+          direction: 'reversed',
+        },
+      ]),
+    [results],
+  )
+
+  const filtered = useMemo(
+    () => expanded.filter((r) => r.fighter_a_percent >= minPercent),
+    [expanded, minPercent],
+  )
 
   const sorted = useMemo(() => {
-    if (sortKey === 'default') return results
     const factor = sortDir === 'asc' ? 1 : -1
-    const compare = (a: MatchResult, b: MatchResult): number => {
+    return [...filtered].sort((a, b) => {
       switch (sortKey) {
         case 'fighter_a':
           return a.fighter_a.localeCompare(b.fighter_a) * factor
@@ -40,18 +76,12 @@ export const MatchResultsTable = ({ results }: Props) => {
         case 'b_pct':
           return (a.fighter_b_percent - b.fighter_b_percent) * factor
       }
-    }
-    return [...results].sort(compare)
-  }, [results, sortKey, sortDir])
+    })
+  }, [filtered, sortKey, sortDir])
 
-  const onHeaderClick = (key: Column['key']) => {
+  const onHeaderClick = (key: SortKey) => {
     if (sortKey === key) {
-      // Cycle: asc -> desc -> default.
-      if (sortDir === 'asc') {
-        setSortDir('desc')
-      } else {
-        setSortKey('default')
-      }
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortKey(key)
       // Numeric columns default to descending (biggest first feels right);
@@ -60,13 +90,63 @@ export const MatchResultsTable = ({ results }: Props) => {
     }
   }
 
-  const indicator = (key: Column['key']): string => {
+  const indicator = (key: SortKey): string => {
     if (sortKey !== key) return '⇅'
     return sortDir === 'asc' ? '▲' : '▼'
   }
 
+  // Lazy: rebuild on click so the export always reflects current filter/sort.
+  const buildExportText = (): string => {
+    const lines: string[] = []
+    lines.push(`Hot Tips - Match Results - ${gameDay}`)
+    lines.push('')
+    const filterDesc =
+      minPercent === 0
+        ? 'no threshold'
+        : `leading fighter >= ${minPercent}%`
+    lines.push(
+      `Filter: ${filterDesc} (${sorted.length} of ${expanded.length} rows)`,
+    )
+    lines.push('')
+    if (sorted.length === 0) {
+      lines.push('(no matches above threshold)')
+    } else {
+      for (const r of sorted) {
+        lines.push(
+          `${r.fighter_a} (${r.fighter_a_percent}%) vs ` +
+            `${r.fighter_b} (${r.fighter_b_percent}%)`,
+        )
+      }
+    }
+    return lines.join('\n')
+  }
+
   return (
-    <div className="scroll">
+    <>
+      <div className="table-toolbar">
+        <label className="filter-label">
+          <span>Show matches with leading fighter at least</span>
+          <select
+            value={minPercent}
+            onChange={(e) => setMinPercent(Number(e.target.value))}
+            className="select-input"
+            aria-label="Minimum leading-fighter percentage"
+          >
+            {THRESHOLD_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p === 0 ? 'All' : `${p}%`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="muted small">
+          Showing {sorted.length} of {expanded.length} rows
+        </span>
+        <ExportButtons
+          getText={buildExportText}
+          filename={`hot-tips-results-${gameDay}.txt`}
+        />
+      </div>
       <table>
         <thead>
           <tr>
@@ -94,16 +174,26 @@ export const MatchResultsTable = ({ results }: Props) => {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((r) => (
-            <tr key={r.matchup_id}>
-              <td>{r.fighter_a}</td>
-              <td className="num">{r.fighter_a_percent}</td>
-              <td>{r.fighter_b}</td>
-              <td className="num">{r.fighter_b_percent}</td>
+          {sorted.length === 0 ? (
+            <tr>
+              <td colSpan={COLUMNS.length} className="muted small empty-row">
+                {minPercent === 0
+                  ? 'No matches to show.'
+                  : `No matches above ${minPercent}%. Lower the threshold to see more.`}
+              </td>
             </tr>
-          ))}
+          ) : (
+            sorted.map((r) => (
+              <tr key={`${r.matchup_id}-${r.direction}`}>
+                <td>{r.fighter_a}</td>
+                <td className="num">{r.fighter_a_percent}</td>
+                <td>{r.fighter_b}</td>
+                <td className="num">{r.fighter_b_percent}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
-    </div>
+    </>
   )
 }
