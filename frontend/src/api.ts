@@ -69,3 +69,12 @@ export const toggleTip = async (tipId: number): Promise<ArenaState> => {
   })
   return parseOrThrow<ArenaState>(response)
 }
+
+/**
+ * Force one community-spreadsheet sync cycle. Returns the new arena state
+ * (including the updated ``sync_status`` block). Authenticated users only.
+ */
+export const triggerSync = async (): Promise<ArenaState> => {
+  const response = await apiFetch('/api/arena/sync/', { method: 'POST' })
+  return parseOrThrow<ArenaState>(response)
+}

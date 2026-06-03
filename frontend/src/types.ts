@@ -44,7 +44,28 @@ export type MatchupTip = TipBase & {
 
 export type ActiveTip = {
   tip_id: number
-  submitted_by: { id: number; display_name: string }
+  submitted_by: {
+    id: number
+    display_name: string
+    /** True when this row was imported by the spreadsheet sync. */
+    from_spreadsheet: boolean
+  }
+}
+
+/**
+ * Status of the community-spreadsheet sync (see backend ``arena.sync``).
+ * Surfaces in the header indicator: green dot when ``ok``, amber for
+ * ``skipped`` / ``never_run``, red for ``error``.
+ */
+export type SyncStatus = {
+  enabled: boolean
+  configured: boolean
+  status: 'never_run' | 'ok' | 'skipped' | 'error'
+  message: string
+  last_run_at: string | null
+  last_sheet_date: string | null
+  last_added_count: number
+  last_skipped_count: number
 }
 
 export type MatchResult = {
@@ -65,6 +86,9 @@ export type ArenaState = {
   matchup_tips: MatchupTip[]
   active_tips: ActiveTip[]
   match_results: MatchResult[]
+  /** Null only if the config singleton is somehow missing (shouldn't happen
+   * after migration 0002). */
+  sync_status: SyncStatus | null
 }
 
 export type WhoAmI = {

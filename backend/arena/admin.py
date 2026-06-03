@@ -20,6 +20,7 @@ from .models import (
     DailyTipSelection,
     Fighter,
     Matchup,
+    SpreadsheetSyncConfig,
     TipDefinition,
 )
 
@@ -61,23 +62,41 @@ class TipDefinitionAdmin(admin.ModelAdmin):
 
 @admin.register(DailyTipSelection)
 class DailyTipSelectionAdmin(admin.ModelAdmin):
-    list_display = ("date", "tip", "submitted_by", "updated_at")
+    list_display = (
+        "date",
+        "tip",
+        "submitted_by",
+        "external_submitter_name",
+        "updated_at",
+    )
     list_filter = ("date",)
-    search_fields = ("tip__label",)
+    search_fields = ("tip__label", "external_submitter_name")
     autocomplete_fields = ("tip",)
     raw_id_fields = ("submitted_by",)
 
 
 @admin.register(DailyTipAuditLog)
 class DailyTipAuditLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "date", "tip", "action", "actor")
+    list_display = (
+        "created_at",
+        "date",
+        "tip",
+        "action",
+        "actor",
+        "external_actor_name",
+    )
     list_filter = ("action", "date")
-    search_fields = ("tip__label", "actor__username")
+    search_fields = (
+        "tip__label",
+        "actor__username",
+        "external_actor_name",
+    )
     readonly_fields = (
         "date",
         "tip",
         "action",
         "actor",
+        "external_actor_name",
         "created_at",
     )
 
@@ -86,6 +105,66 @@ class DailyTipAuditLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None) -> bool:  # type: ignore[override]
         return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:  # type: ignore[override]
+        return False
+
+
+@admin.register(SpreadsheetSyncConfig)
+class SpreadsheetSyncConfigAdmin(admin.ModelAdmin):
+    """Singleton row: admin edits ``share_url`` / ``enabled``; the rest is
+    read-only telemetry written by ``arena.sync``.
+    """
+
+    list_display = (
+        "__str__",
+        "enabled",
+        "last_status",
+        "last_run_at",
+        "last_sheet_date",
+        "last_added_count",
+        "last_skipped_count",
+    )
+    readonly_fields = (
+        "last_run_at",
+        "last_status",
+        "last_message",
+        "last_sheet_date",
+        "last_added_count",
+        "last_skipped_count",
+    )
+    fieldsets = (
+        (
+            "Source",
+            {
+                "fields": ("share_url", "enabled"),
+                "description": (
+                    "Paste the OneDrive share URL for the community Hot "
+                    "Tips spreadsheet. Anyone-with-the-link must have "
+                    "view access. Toggle ``enabled`` off to pause both "
+                    "the manual button and the periodic auto-sync."
+                ),
+            },
+        ),
+        (
+            "Last run",
+            {
+                "fields": (
+                    "last_run_at",
+                    "last_status",
+                    "last_sheet_date",
+                    "last_added_count",
+                    "last_skipped_count",
+                    "last_message",
+                ),
+            },
+        ),
+    )
+
+    def has_add_permission(self, request) -> bool:  # type: ignore[override]
+        # Singleton: hide the "Add" button. The migration seeds pk=1 and
+        # :meth:`SpreadsheetSyncConfig.save` clamps the pk on every save.
+        return not SpreadsheetSyncConfig.objects.exists()
 
     def has_delete_permission(self, request, obj=None) -> bool:  # type: ignore[override]
         return False

@@ -152,6 +152,44 @@ button { font: inherit; cursor: pointer; }
   text-shadow: 0 0 4px rgba(255, 100, 80, 0.4);
 }
 
+/* Spreadsheet-sync indicator: colored dot + small label, hover-for-detail. */
+.sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid rgba(193, 150, 88, 0.35);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: help;
+  white-space: nowrap;
+}
+.sync-indicator .small { font-size: 0.78rem; }
+
+.sync-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  flex: 0 0 auto;
+}
+.sync-dot-green {
+  background: #4d6b2b;
+  box-shadow: 0 0 5px rgba(120, 180, 70, 0.7);
+}
+.sync-dot-amber {
+  background: #c89640;
+  box-shadow: 0 0 5px rgba(200, 150, 64, 0.6);
+}
+.sync-dot-red {
+  background: #6b1818;
+  box-shadow: 0 0 5px rgba(255, 80, 70, 0.7);
+}
+.sync-dot-grey {
+  background: #5b4226;
+}
+
 /* Buttons inside the header (logout, sign-in). */
 .header button {
   background:

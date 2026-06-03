@@ -1,21 +1,34 @@
 """Arena API views.
 
-Two main endpoints:
+Three main endpoints:
 
 * ``GET /api/arena/state/`` returns the full arena state for *today* (game
   day is computed server-side in ``America/New_York``).
 * ``POST /api/arena/tips/toggle/`` toggles one tip in the shared daily pool,
   writes an audit log row, and returns the new arena state.
+* ``POST /api/arena/sync/`` manually triggers a community-spreadsheet sync
+  (auth-gated; see :mod:`arena.sync`).
 
 Plus a couple of trivial auth helpers used by the React client:
 
 * ``GET /api/auth/csrf/``    no-op view that sets the CSRF cookie.
 * ``GET /api/auth/whoami/``  returns the current user or 401.
+
+Auto-sync: ``GET /api/arena/state/`` opportunistically runs a sync if it's
+been more than :data:`AUTO_SYNC_INTERVAL_SECONDS` since the last attempt
+and the config is enabled / has a URL. This piggybacks on the React
+client's 10-second polling so the spreadsheet stays fresh without
+provisioning a separate scheduler (which our SQLite-per-machine deploy
+can't easily share with the web process anyway).
 """
 from __future__ import annotations
 
+import logging
+from datetime import timedelta
+
 from django.db import connection, transaction
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from rest_framework import status
@@ -29,10 +42,19 @@ from .models import (
     DailyTipSelection,
     Fighter,
     Matchup,
+    SpreadsheetSyncConfig,
     TipDefinition,
 )
 from .serializers import build_arena_state
 from .services import current_game_day, display_name
+
+
+log = logging.getLogger(__name__)
+
+# How often the in-request auto-sync hook is allowed to actually fire.
+# Lower values are wasted load on OneDrive; higher values let the
+# spreadsheet drift further before the page reflects it.
+AUTO_SYNC_INTERVAL_SECONDS = 5 * 60
 
 
 def _load_state_payload(game_day) -> dict:
@@ -61,6 +83,7 @@ def _load_state_payload(game_day) -> dict:
             "submitted_by",
         )
     )
+    sync_config = SpreadsheetSyncConfig.get_solo()
     return build_arena_state(
         game_day=game_day,
         fighters=fighters,
@@ -68,19 +91,76 @@ def _load_state_payload(game_day) -> dict:
         fighter_tips=fighter_tips,
         matchup_tips=matchup_tips,
         selections=selections,
+        sync_config=sync_config,
     )
+
+
+def _maybe_auto_sync() -> None:
+    """If due, run one community-spreadsheet sync inline.
+
+    Best-effort: any failure is swallowed and logged. The result is written
+    into ``SpreadsheetSyncConfig`` regardless, so the next state response
+    will surface the error in ``sync_status``.
+
+    Runs only when:
+    * sync is enabled and the share URL is configured,
+    * no run has happened in the last :data:`AUTO_SYNC_INTERVAL_SECONDS`.
+    """
+    try:
+        config = SpreadsheetSyncConfig.get_solo()
+    except Exception:  # pragma: no cover - DB issue, let view return state
+        log.exception("could not load SpreadsheetSyncConfig for auto-sync")
+        return
+    if not (config.enabled and config.share_url):
+        return
+    if config.last_run_at is not None:
+        elapsed = timezone.now() - config.last_run_at
+        if elapsed < timedelta(seconds=AUTO_SYNC_INTERVAL_SECONDS):
+            return
+    # Import locally to keep the views module light and skip the
+    # ``openpyxl`` import when sync isn't actually triggered.
+    from .sync import sync_spreadsheet_once
+
+    try:
+        sync_spreadsheet_once()
+    except Exception:  # pragma: no cover - belt-and-braces
+        log.exception("auto-sync raised; continuing with stale state")
 
 
 class ArenaStateView(APIView):
     """Return the full arena state for today's game day.
 
     Read-only for everyone (anonymous viewers welcome). Editing requires
-    authentication and goes through :class:`ToggleTipView`.
+    authentication and goes through :class:`ToggleTipView`. Also acts as
+    the auto-sync trigger — see :func:`_maybe_auto_sync`.
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request):
+        _maybe_auto_sync()
+        game_day = current_game_day()
+        return Response(_load_state_payload(game_day))
+
+
+class TriggerSpreadsheetSyncView(APIView):
+    """Force one community-spreadsheet sync cycle right now.
+
+    Authenticated users only — same gate as :class:`ToggleTipView`. We
+    always run with ``force=True`` so an admin can troubleshoot even if
+    they've set ``enabled=False`` in admin, but the date gate still
+    protects against applying a stale sheet.
+
+    Returns the full updated arena state on success, including the new
+    ``sync_status`` block so the header indicator updates immediately.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .sync import sync_spreadsheet_once
+
+        sync_spreadsheet_once(force=True)
         game_day = current_game_day()
         return Response(_load_state_payload(game_day))
 

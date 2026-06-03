@@ -8,11 +8,17 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from .models import DAILY_TIP_CAP, DailyTipSelection, Matchup, TipDefinition
+from .models import (
+    DAILY_TIP_CAP,
+    DailyTipSelection,
+    Matchup,
+    SpreadsheetSyncConfig,
+    TipDefinition,
+)
 from .services import (
     MatchResult,
     calculate_results,
-    display_name,
+    selection_submitter_display,
 )
 
 
@@ -34,8 +40,35 @@ def serialize_active_tip(selection: DailyTipSelection) -> dict:
         "tip_id": selection.tip_id,
         "submitted_by": {
             "id": selection.submitted_by_id,
-            "display_name": display_name(selection.submitted_by),
+            "display_name": selection_submitter_display(selection),
+            # Flag rows that came from the spreadsheet so the frontend can
+            # style them differently if it wants to (e.g. dim icon).
+            "from_spreadsheet": bool(selection.external_submitter_name),
         },
+    }
+
+
+def serialize_sync_status(config: SpreadsheetSyncConfig) -> dict:
+    """Compact view of the spreadsheet-sync state for the header indicator.
+
+    Kept terse on purpose — the React header just needs to know "is it
+    healthy, when did it last run, and what does the tooltip say".
+    """
+    return {
+        "enabled": config.enabled,
+        "configured": bool(config.share_url),
+        "status": config.last_status,
+        "message": config.last_message,
+        "last_run_at": (
+            config.last_run_at.isoformat() if config.last_run_at else None
+        ),
+        "last_sheet_date": (
+            config.last_sheet_date.isoformat()
+            if config.last_sheet_date
+            else None
+        ),
+        "last_added_count": config.last_added_count,
+        "last_skipped_count": config.last_skipped_count,
     }
 
 
@@ -70,6 +103,7 @@ def build_arena_state(
     fighter_tips: Iterable[TipDefinition],
     matchup_tips: Iterable[TipDefinition],
     selections: Iterable[DailyTipSelection],
+    sync_config: SpreadsheetSyncConfig | None = None,
 ) -> dict:
     matchups = list(matchups)
     selections = list(selections)
@@ -88,4 +122,7 @@ def build_arena_state(
         "matchup_tips": [serialize_matchup_tip(t) for t in matchup_tips],
         "active_tips": [serialize_active_tip(s) for s in selections],
         "match_results": [r.to_dict() for r in results],
+        "sync_status": (
+            serialize_sync_status(sync_config) if sync_config else None
+        ),
     }

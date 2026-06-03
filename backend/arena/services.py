@@ -6,6 +6,9 @@
   SPEC.md section 10.
 * :func:`display_name` resolves a user to the string shown next to their
   submitted tips.
+* :func:`selection_submitter_display` resolves a ``DailyTipSelection`` to the
+  string the UI shows: either the human user's display name, or
+  ``"<name> (Spreadsheet)"`` for sync-imported rows.
 """
 from __future__ import annotations
 
@@ -14,14 +17,22 @@ from datetime import date
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
-from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import DailyTipSelection, Matchup, TipDefinition
+from .models import (
+    SPREADSHEET_SYNC_USERNAME,
+    DailyTipSelection,
+    Matchup,
+    TipDefinition,
+)
 
 
 GAME_TZ = ZoneInfo("America/New_York")
 START_PERCENT = 50
+
+# Suffix appended to sheet-imported submitter names so the UI can visually
+# distinguish "Aleks (manual)" from "Aleks (Spreadsheet)" at a glance.
+SPREADSHEET_SUBMITTER_SUFFIX = " (Spreadsheet)"
 
 
 def current_game_day() -> date:
@@ -39,6 +50,33 @@ def display_name(user) -> str:
         return ""
     full = user.get_full_name() if hasattr(user, "get_full_name") else ""
     return full.strip() or user.get_username()
+
+
+def selection_submitter_display(selection: DailyTipSelection) -> str:
+    """Return the string the UI shows for a tip's submitter.
+
+    * Manual rows (clicked by a real signed-in user) -> that user's
+      :func:`display_name`.
+    * Sync rows (owned by the ``spreadsheet-sync`` system user) ->
+      ``"<external name> (Spreadsheet)"`` so contributors keep credit
+      without us having to mint a Django account per sheet author.
+
+    Falls back to plain :func:`display_name` if a sync row somehow has no
+    ``external_submitter_name`` (e.g. a manual admin edit).
+    """
+    user = selection.submitted_by
+    is_sync_user = (
+        user is not None
+        and user.get_username() == SPREADSHEET_SYNC_USERNAME
+    )
+    external = (selection.external_submitter_name or "").strip()
+    if is_sync_user and external:
+        return f"{external}{SPREADSHEET_SUBMITTER_SUFFIX}"
+    if is_sync_user:
+        # No external name recorded — surface something legible rather than
+        # the literal username slug.
+        return f"Anonymous{SPREADSHEET_SUBMITTER_SUFFIX}"
+    return display_name(user)
 
 
 @dataclass(frozen=True)

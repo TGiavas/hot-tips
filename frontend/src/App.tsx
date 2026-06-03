@@ -126,6 +126,8 @@ const Main = ({ whoami }: MainProps) => {
         knownTipCount={state.known_tip_count}
         maxTips={state.max_tips}
         whoami={whoami}
+        syncStatus={state.sync_status}
+        onSyncComplete={setState}
       />
       {toggleError ? (
         <div className="error-banner">{toggleError}</div>

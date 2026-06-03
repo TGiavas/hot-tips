@@ -2,6 +2,18 @@
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
+# Note on community-spreadsheet sync:
+#   The Django app polls the OneDrive spreadsheet inline on `GET
+#   /api/arena/state/` (rate-limited to once per 5 min — see
+#   `arena.views.AUTO_SYNC_INTERVAL_SECONDS`). This piggybacks on the
+#   React client's existing 10s polling so the sheet stays fresh without
+#   provisioning a separate scheduled machine. We can't use Fly Scheduled
+#   Machines for a "real" cron because each Fly machine gets its own
+#   volume, and our SQLite DB lives on this app's volume only.
+#
+#   If we ever need a true periodic trigger (e.g. nobody has the page
+#   open for hours), the cleanest add is a Fly Scheduled Machine that
+#   hits `POST /api/arena/sync/` over the internal network.
 
 app = 'hot-tips'
 primary_region = 'cdg'

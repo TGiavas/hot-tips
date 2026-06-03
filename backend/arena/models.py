@@ -10,12 +10,22 @@ defined here are:
                          fighter-wide (+/- 5%) or matchup-specific (+10%)
     DailyTipSelection  - one row per active tip in the shared daily pool
     DailyTipAuditLog   - immutable history of activate/deactivate events
+    SpreadsheetSyncConfig - singleton row holding the community-spreadsheet
+                         URL + last-run status (see ``arena.sync``)
 """
 from __future__ import annotations
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+
+
+# Username of the synthetic Django user that owns sync-imported rows. The
+# spreadsheet contributor's actual display name is kept in
+# ``DailyTipSelection.external_submitter_name`` so we don't have to mint a
+# real Django account for every "Night" or "Aleks" that shows up in the
+# sheet (SPEC.md section 6: users are admin-onboarded, not auto-created).
+SPREADSHEET_SYNC_USERNAME = "spreadsheet-sync"
 
 
 # Allowed modifier values per SPEC.md sections 3 and 14.
@@ -187,6 +197,14 @@ class DailyTipSelection(models.Model):
         on_delete=models.PROTECT,
         related_name="submitted_daily_tips",
     )
+    # Set only when ``submitted_by`` is the ``spreadsheet-sync`` system user
+    # (see :data:`SPREADSHEET_SYNC_USERNAME`). Stores the community
+    # contributor's display name verbatim from the source spreadsheet so the
+    # UI can render it as ``"<name> (Spreadsheet)"`` without inventing a real
+    # Django account per sheet author.
+    external_submitter_name = models.CharField(
+        max_length=150, blank=True, default=""
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -216,6 +234,12 @@ class DailyTipAuditLog(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT
     )
+    # Mirror of ``DailyTipSelection.external_submitter_name``: set when the
+    # acting user is the ``spreadsheet-sync`` system user so the audit log
+    # still records "who" performed the change in human terms.
+    external_actor_name = models.CharField(
+        max_length=150, blank=True, default=""
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -223,3 +247,65 @@ class DailyTipAuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.action} {self.tip} by {self.actor}"
+
+
+class SpreadsheetSyncConfig(models.Model):
+    """Singleton row controlling and tracking the community-spreadsheet sync.
+
+    There is exactly one row (``pk=1``) created by the migration and accessed
+    via :meth:`get_solo`. Admin edits the ``share_url`` and ``enabled`` flag;
+    :mod:`arena.sync` writes the ``last_*`` fields after each run.
+
+    The "manual wins" merge policy lives in :mod:`arena.sync`; this model just
+    persists the configuration and observability state.
+    """
+
+    SINGLETON_ID = 1
+
+    class Status(models.TextChoices):
+        NEVER_RUN = "never_run", "Never run"
+        OK = "ok", "OK"
+        SKIPPED = "skipped", "Skipped (sheet stale)"
+        ERROR = "error", "Error"
+
+    # OneDrive "share" URL — accepts both 1drv.ms shortlinks and the full
+    # onedrive.live.com URLs. Optional so a freshly-deployed instance can
+    # start in the "configure-me" state instead of erroring on sync.
+    share_url = models.URLField(max_length=2048, blank=True, default="")
+    enabled = models.BooleanField(
+        default=True,
+        help_text=(
+            "Master switch. Disabling stops both the manual button and "
+            "the periodic auto-sync from contacting OneDrive."
+        ),
+    )
+
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.NEVER_RUN
+    )
+    last_message = models.TextField(blank=True, default="")
+    last_sheet_date = models.DateField(null=True, blank=True)
+    last_added_count = models.PositiveIntegerField(default=0)
+    last_skipped_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Spreadsheet sync config"
+        verbose_name_plural = "Spreadsheet sync config"
+
+    def __str__(self) -> str:
+        return f"SpreadsheetSyncConfig(status={self.last_status})"
+
+    @classmethod
+    def get_solo(cls) -> "SpreadsheetSyncConfig":
+        """Return the singleton row, creating it on first access."""
+        obj, _ = cls.objects.get_or_create(pk=cls.SINGLETON_ID)
+        return obj
+
+    def save(self, *args, **kwargs):
+        # Enforce singleton at the application layer — admin doesn't get an
+        # "Add" button (see :class:`SpreadsheetSyncConfigAdmin`) but a
+        # programmatic ``SpreadsheetSyncConfig.objects.create()`` should
+        # still produce a deterministic pk so :meth:`get_solo` stays stable.
+        self.pk = self.SINGLETON_ID
+        return super().save(*args, **kwargs)
